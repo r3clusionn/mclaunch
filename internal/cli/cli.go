@@ -3,11 +3,13 @@ package cli
 
 import (
 	"context"
+	"encoding/json"
 	"errors"
 	"flag"
 	"fmt"
 	"os"
 	"os/signal"
+	"path/filepath"
 	"strings"
 	"syscall"
 	"time"
@@ -18,6 +20,7 @@ import (
 	"mclaunch/internal/loaders"
 	"mclaunch/internal/modrinth"
 	"mclaunch/internal/mojang"
+	"mclaunch/internal/paths"
 	"mclaunch/internal/prism"
 )
 
@@ -30,7 +33,7 @@ const Usage = `usage: mclaunch [command]
                                    performance mods (Fabric)
   prepare NAME                     download and install everything for NAME
   launch NAME [-account A] [-quickplay WORLD] [-gc-log FILE] [-detach]
-  account offline NAME | account list | account remove ID | account default ID
+  account microsoft | account offline NAME | account list | account remove ID | account default ID
   mods search QUERY -instance NAME | mods install NAME PROJECT... | mods list NAME | mods update NAME
   import-prism [DIR]               import Prism Launcher instances (default: its data dir)
   import-mrpack FILE [-name NAME]  import a Modrinth modpack
@@ -190,6 +193,23 @@ func Run(args []string) (bool, error) {
 				return true, err
 			}
 			fmt.Println("added offline account", a.Name, a.ID)
+			return true, auth.Upsert(a)
+		case "microsoft":
+			b, _ := os.ReadFile(filepath.Join(paths.Root, "settings.json"))
+			var set struct {
+				MSAClientID string `json:"msaClientId"`
+			}
+			json.Unmarshal(b, &set)
+			dc, err := auth.StartDeviceCode(ctx, set.MSAClientID)
+			if err != nil {
+				return true, err
+			}
+			fmt.Printf("Open %s and enter %s\n", dc.VerificationURI, dc.UserCode)
+			a, err := auth.PollDeviceCode(ctx, set.MSAClientID, dc)
+			if err != nil {
+				return true, err
+			}
+			fmt.Println("signed in as", a.Name)
 			return true, auth.Upsert(a)
 		case "list":
 			for _, a := range auth.List() {

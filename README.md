@@ -2,7 +2,7 @@
 
 A Minecraft launcher for Linux in Go: instances, Fabric, Quilt, NeoForge and Forge, Modrinth mods and modpacks, imports of Prism Launcher instances, offline and Microsoft accounts. It downloads Mojang's own Java runtimes, so nothing has to be installed system-wide. It is made for one laptop (Ryzen AI 9 HX 475, Radeon 890M, 2880x1800 at 120 Hz, Gentoo with dwm). Its interface uses Seanime's design, in the same standalone window as [media-player](https://github.com/r3clusionn/media-player), and closes completely when the game starts. It sets Java, Mesa, the frame cap and the power profile for the hardware and the power source.
 
-**Status:** working, version 1.0. Vanilla, Fabric, Quilt, NeoForge and Forge instances, a 244-mod NeoForge modpack and an imported Prism instance were all launched on the target laptop (see Verification). Microsoft sign-in is written but can't work until this launcher's Azure app is approved by Mojang. Until then, offline accounts play singleplayer and LAN.
+**Status:** working, version 1.0. Vanilla, Fabric, Quilt, NeoForge and Forge instances, a 244-mod NeoForge modpack and an imported Prism instance were all launched on the target laptop (see Verification). Microsoft sign-in uses the official Minecraft launcher's client ID (see Limits). The code is issued and the sign-in page works; finishing a sign-in hasn't been tested yet.
 
 ![The mclaunch window at 2880x1800 in Seanime's dark design: an icon sidebar on the left; a hero banner showing a Minecraft screenshot behind "Continue playing: My Fabric World" with badges for Fabric 0.19.5, Minecraft 26.3 and 2 mods and a violet Play button; below it the Instances grid with cards for each instance, each showing a screenshot from that instance's game, its loader badge, version, mod count and play time](docs/images/library.png)
 
@@ -36,7 +36,7 @@ cd mclaunch
 
 This builds the interface, the helper, the supervisor and the program into `build/dist`, then copies them to `~/.local/opt/mclaunch` (377 MB, CEF stripped of its debug info) and links `~/.local/bin/mclaunch`.
 
-**Power profile while playing (optional, root):** `doas sh powerprofile-game.sh` (in the owner's `~/claude/apps`) adds a `game` mode to `/usr/local/sbin/powerprofile` (performance on AC, battery mode on battery) and a doas rule for it. mclaunch switches to `game` at launch and back to `auto` after; without the rule it skips this silently.
+**Power plan while playing (optional, root):** with the `powerprofile` script from [scripts](https://github.com/r3clusionn/scripts) installed, mclaunch asks for the gaming plan at launch and restores the previous one after. A plan picked by hand stays as it is. Without the script it skips this silently.
 
 ## How to use
 
@@ -44,7 +44,7 @@ This builds the interface, the helper, the supervisor and the program into `buil
 mclaunch                 # the window
 ```
 
-1. **Accounts:** add an offline account (a name), or sign in with Microsoft once the app ID is set (Settings).
+1. **Accounts:** sign in with Microsoft (a code to enter at microsoft.com/link on any device), or add an offline account (a name) for singleplayer and LAN.
 2. **New instance:** pick the version and loader. The recommended loader version is preselected, and Fabric offers the performance mods.
 3. **Play:** the first launch downloads Java, the libraries and the assets (about 700 MB for 26.3, 45 s here), then the window closes and the game starts.
 4. **Mods:** Browse > Mods for the selected instance, or the instance's Mods tab. **Modpacks:** Browse > Modpacks makes a new instance.
@@ -55,6 +55,7 @@ mclaunch                 # the window
 The command line does the same without the window:
 
 ```sh
+mclaunch account microsoft               # prints a code for microsoft.com/link
 mclaunch account offline Steve
 mclaunch create "Survival" -game 26.3 -loader fabric -perf
 mclaunch launch survival                  # waits for the game; -detach to return
@@ -80,7 +81,7 @@ mclaunch import-mrpack pack.mrpack
 - **Frame cap by power source:** `maxFps` in the instance's `options.txt` before each launch, 120 plugged in (the panel's rate) and 60 on battery.
 - **The window** is CEF rendering the React interface off-screen into an X11/EGL window (appshell). The Go program serves the interface and a JSON API on a random localhost port, with progress as server-sent events.
 - **When the game starts** the window closes, and the process replaces itself (`exec`) with `mclaunch-supervise`, a static Go binary without CEF. The game stays its child, so it waits with `wait4`.
-- **Accounts:** offline accounts use the game's own offline UUID (MD5 of `OfflinePlayer:<name>`). Microsoft accounts use the device-code flow: Microsoft, then Xbox Live, then XSTS, then Minecraft services. Tokens refresh before launching and are stored in `accounts.json` with mode 0600.
+- **Accounts:** offline accounts use the game's own offline UUID (MD5 of `OfflinePlayer:<name>`). Microsoft accounts use a device code with the official launcher's client ID (`00000000402b5328`) at login.live.com, or an own Azure app ID at Azure AD. Then come Xbox Live, XSTS and Minecraft services. Tokens refresh before launching and are stored in `accounts.json` with mode 0600.
 
 ## Measurements
 
@@ -117,16 +118,16 @@ At 120 fps a frame lasts 8.3 ms, so G1's longer pauses show as stutters and ZGC'
 - **In the window,** driven through the DevTools protocol:
   - a Quilt instance created with the dialog;
   - Mod Menu installed from Browse with its dependency;
-  - offline account and Microsoft sign-in errors (no app ID; an unknown app ID reaches Microsoft and its error is shown).
+  - an offline account; Microsoft sign-in shows a code from login.live.com for microsoft.com/link (window and command line); an unknown own app ID reaches Microsoft and its error is shown.
 - **Play from the window:**
   - the window and all its CEF processes exited;
   - the supervisor waited (4.5 MB) and recorded 94 s of play;
   - after a forced failure (a bad JVM flag) the window reopened on the log showing Java's error.
-- **Not verified:** Microsoft sign-in end to end (no approved app ID); power draw while playing (the laptop was plugged in, and then the battery reports the charge rate).
+- **Not verified:** a finished Microsoft sign-in and an online launch with it (needs the owner's account); power draw while playing (the laptop was plugged in, and then the battery reports the charge rate).
 
 ## Limits
 
-- **Microsoft accounts need Mojang's approval of this launcher's own Azure app.** Minecraft services refuse app IDs they haven't approved. Some launchers reuse the official launcher's ID instead; mclaunch doesn't, so until approval only offline accounts work (singleplayer and LAN).
+- **Microsoft sign-in passes as the official launcher.** Minecraft services refuse app IDs Mojang hasn't approved, so mclaunch uses the official Minecraft launcher's client ID, as many small launchers do. This isn't sanctioned and Microsoft can block it at any time. An own app ID approved by Mojang can be set in Settings instead.
 - **Quilt:** Quilt Loader 0.24 can't load Minecraft 26.x (it can't read Java 25 classes). It also presents an older Fabric Loader than current Fabric mods require, so many Fabric mods refuse to load on it. The performance set is offered for Fabric only.
 - The window takes 371 MB (CEF), more than the plan's 250 MB target; it is closed while you play.
 - CurseForge, skins, servers and Technic or ATLauncher imports aren't there.

@@ -605,7 +605,7 @@ func (s *Server) routes() http.Handler {
 		s.msa = flow
 		s.mu.Unlock()
 		go func() {
-			a, err := auth.PollDeviceCode(ctx, set.MSAClientID, dc)
+			a, err := auth.PollDeviceCode(ctx, auth.ClientID(set.MSAClientID), dc)
 			s.mu.Lock()
 			if err != nil {
 				flow.Status, flow.Error = "error", err.Error()

@@ -2,9 +2,11 @@
 // XSTS -> Minecraft services) and offline accounts, stored in accounts.json
 // with mode 0600.
 //
-// Microsoft sign-in needs this launcher's own Azure app (client) ID, approved
-// by Mojang for Minecraft services; it is a setting (Settings > Microsoft app
-// ID). Without one, offline accounts work for singleplayer.
+// Microsoft sign-in uses the official Minecraft launcher's client ID with
+// Microsoft's consumer (login.live.com) endpoints by default, as many small
+// launchers do: Minecraft services only accept app IDs Mojang approved. This
+// is not sanctioned and Microsoft can stop it. An own Azure app ID (approved
+// by Mojang) can be set instead and then uses the Azure AD endpoints.
 package auth
 
 import (
@@ -195,14 +197,37 @@ type DeviceCode struct {
 
 const msTenant = "https://login.microsoftonline.com/consumers/oauth2/v2.0"
 
+// OfficialClientID is the official Minecraft launcher's (Microsoft account,
+// login.live.com) client ID.
+const OfficialClientID = "00000000402b5328"
+
+type endpoints struct{ device, token, scope string }
+
+func endpointsFor(clientID string) endpoints {
+	if clientID == OfficialClientID {
+		return endpoints{"https://login.live.com/oauth20_connect.srf", "https://login.live.com/oauth20_token.srf",
+			"service::user.auth.xboxlive.com::MBI_SSL"}
+	}
+	return endpoints{msTenant + "/devicecode", msTenant + "/token", "XboxLive.signin offline_access"}
+}
+
+// ClientID is the ID to sign in with: the configured one, else the official launcher's.
+func ClientID(configured string) string {
+	if strings.TrimSpace(configured) == "" {
+		return OfficialClientID
+	}
+	return strings.TrimSpace(configured)
+}
+
 func StartDeviceCode(ctx context.Context, clientID string) (*DeviceCode, error) {
-	if clientID == "" {
-		return nil, errors.New("Microsoft sign-in needs this launcher's Azure app ID (Settings), approved by Mojang; until then use an offline account")
+	clientID = ClientID(clientID)
+	ep := endpointsFor(clientID)
+	form := url.Values{"client_id": {clientID}, "scope": {ep.scope}}
+	if clientID == OfficialClientID {
+		form.Set("response_type", "device_code")
 	}
 	var dc DeviceCode
-	err := postForm(ctx, msTenant+"/devicecode", url.Values{
-		"client_id": {clientID}, "scope": {"XboxLive.signin offline_access"},
-	}, &dc)
+	err := postForm(ctx, ep.device, form, &dc)
 	return &dc, err
 }
 
@@ -214,6 +239,8 @@ type msToken struct {
 
 // PollDeviceCode waits for the user to sign in, then signs in to Minecraft.
 func PollDeviceCode(ctx context.Context, clientID string, dc *DeviceCode) (*Account, error) {
+	clientID = ClientID(clientID)
+	ep := endpointsFor(clientID)
 	interval := time.Duration(max(dc.Interval, 5)) * time.Second
 	deadline := time.Now().Add(time.Duration(dc.ExpiresIn) * time.Second)
 	for time.Now().Before(deadline) {
@@ -223,7 +250,7 @@ func PollDeviceCode(ctx context.Context, clientID string, dc *DeviceCode) (*Acco
 		case <-time.After(interval):
 		}
 		var tok msToken
-		err := postForm(ctx, msTenant+"/token", url.Values{
+		err := postForm(ctx, ep.token, url.Values{
 			"client_id": {clientID}, "grant_type": {"urn:ietf:params:oauth:grant-type:device_code"},
 			"device_code": {dc.DeviceCode},
 		}, &tok)
@@ -248,10 +275,11 @@ func Refresh(ctx context.Context, a *Account) (*Account, error) {
 	if a.Type != "msa" || time.Now().Unix() < a.Expires-300 {
 		return a, nil
 	}
+	ep := endpointsFor(a.ClientID)
 	var tok msToken
-	if err := postForm(ctx, msTenant+"/token", url.Values{
+	if err := postForm(ctx, ep.token, url.Values{
 		"client_id": {a.ClientID}, "grant_type": {"refresh_token"}, "refresh_token": {a.Refresh},
-		"scope": {"XboxLive.signin offline_access"},
+		"scope": {ep.scope},
 	}, &tok); err != nil {
 		return nil, fmt.Errorf("refreshing %s: %w (sign in again)", a.Name, err)
 	}

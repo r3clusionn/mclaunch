@@ -663,8 +663,8 @@ function SettingsPage({ toast, reloadInstances }) {
             <Card className="space-y-4 p-5">
                 <h3 className="flex items-center gap-2 font-bold"><LogIn className="size-4 text-brand-300" /> Microsoft sign-in</h3>
                 <Input label="Azure app (client) ID" value={s.msaClientId} onChange={e => setS({ ...s, msaClientId: e.target.value })} onBlur={() => save(s)}
-                    placeholder="00000000-0000-0000-0000-000000000000"
-                    help="Your own app registration (personal accounts, public client flows on), approved by Mojang for Minecraft services. Without approval Minecraft refuses the sign-in." />
+                    placeholder="Empty: the official Minecraft launcher's ID"
+                    help="Empty signs in as the official launcher does (its client ID, login.live.com), like many small launchers; not sanctioned, and Microsoft can stop it. Or enter your own app registration approved by Mojang." />
             </Card>
             <Card className="space-y-4 p-5">
                 <h3 className="flex items-center gap-2 font-bold"><FolderInput className="size-4 text-brand-300" /> Import</h3>

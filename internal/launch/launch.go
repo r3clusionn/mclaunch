@@ -295,8 +295,10 @@ func ensureAudio() {
 	exec.Command("pkill", "-USR1", "-x", "dwmstat").Run()
 }
 
-// PowerProfile asks for the game power mode (or back to automatic) through
-// the doas rule from powerprofile-game.sh; without the rule nothing happens.
+// PowerProfile asks the owner's powerprofile script for the gaming plan
+// ("game") and back ("restore") through its doas rule (scripts repo,
+// cmds/root/install.sh). Both leave a plan picked by hand alone; without the
+// script or the rule nothing happens.
 func PowerProfile(mode string) error {
 	if !exists("/usr/local/sbin/powerprofile") {
 		return nil
@@ -347,7 +349,7 @@ type Result struct {
 // Finish records the play time, restores the power profile and finds a
 // crash report. Called after the game exits (also from the supervisor).
 func Finish(inst *instance.Instance, started time.Time, exitCode int) Result {
-	PowerProfile("auto")
+	PowerProfile("restore")
 	res := Result{ExitCode: exitCode, Seconds: int64(time.Since(started).Seconds())}
 	if cur, err := instance.Load(inst.ID); err == nil {
 		inst = cur
