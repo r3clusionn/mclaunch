@@ -1,59 +1,137 @@
 # mclaunch
 
-A Minecraft launcher for Linux in Go: instances, Microsoft accounts, Fabric, Quilt, NeoForge and Forge, Modrinth mods and modpacks, and imports of existing Prism Launcher instances. It downloads Mojang's own Java runtimes, so nothing has to be installed system-wide. It is made for one laptop (Ryzen AI 9 HX 475, Radeon 890M, 2880x1800 at 120 Hz, Gentoo with dwm): its interface (Seanime's design, in the same standalone window as [media-player](https://github.com/r3clusionn/media-player)) closes completely when the game starts, and it sets Java, Mesa, the frame cap and the power profile for the hardware and the power source.
+A Minecraft launcher for Linux in Go: instances, Fabric, Quilt, NeoForge and Forge, Modrinth mods and modpacks, imports of Prism Launcher instances, offline and Microsoft accounts. It downloads Mojang's own Java runtimes, so nothing has to be installed system-wide. It is made for one laptop (Ryzen AI 9 HX 475, Radeon 890M, 2880x1800 at 120 Hz, Gentoo with dwm). Its interface uses Seanime's design, in the same standalone window as [media-player](https://github.com/r3clusionn/media-player), and closes completely when the game starts. It sets Java, Mesa, the frame cap and the power profile for the hardware and the power source.
 
-**Status:** planned, phase 6 of 7 of [the plan](https://github.com/r3clusionn/media-player/blob/main/docs/PLAN.md#6-minecraft-launcher-mclaunch). No code yet. Screenshots will be captures of the real program once it runs.
+**Status:** working, version 1.0. Vanilla, Fabric, Quilt, NeoForge and Forge instances, a 244-mod NeoForge modpack and an imported Prism instance were all launched on the target laptop (see Verification). Microsoft sign-in is written but can't work until this launcher's Azure app is approved by Mojang. Until then, offline accounts play singleplayer and LAN.
+
+![The mclaunch window at 2880x1800 in Seanime's dark design: an icon sidebar on the left; a hero banner showing a Minecraft screenshot behind "Continue playing: My Fabric World" with badges for Fabric 0.19.5, Minecraft 26.3 and 2 mods and a violet Play button; below it the Instances grid with cards for each instance, each showing a screenshot from that instance's game, its loader badge, version, mod count and play time](docs/images/library.png)
 
 ## Features
 
-- **Accounts:** Microsoft sign-in with a device code (open the link on any device, no embedded login page), several accounts, tokens refreshed automatically.
-- **Versions and loaders:** every vanilla release and snapshot, Fabric, Quilt, NeoForge and Forge. Libraries, assets and Java are shared between instances and checked by hash.
-- **Java without packages:** the runtime each version asks for is downloaded from Mojang's Java manifest, as the official launcher does; a custom Java can be set per instance.
-- **Instances:** memory, Java arguments, window size and environment per instance; mods, resource packs, shader packs, worlds and screenshots.
-- **Mods from Modrinth:** search by version and loader, install with dependencies, update all, enable or disable, and identify existing jars by hash. `.mrpack` import and export.
-- **Prism Launcher import:** existing instances (`instance.cfg`, `mmc-pack.json`) come over with their mods and worlds.
-- **Logs and crashes:** a live log with search, and the crash report opened with the likely mod named.
-- **Tuned for the laptop:** see How it works.
+- **Instances:** any release or snapshot, with Fabric, Quilt, NeoForge or Forge. Each has its own memory, garbage collector, JVM arguments, Java, window size and frame caps. Covers come from the instance's own screenshots or world icons.
+- **Shared files:** libraries, assets and Java are downloaded once for all instances, 16 at a time, checked by SHA1.
+- **Java without packages:** the runtime each version asks for comes from Mojang's Java manifest, as in the official launcher. A custom Java can be set per instance.
+- **Mods from Modrinth:**
+  - search filtered by the instance's version and loader;
+  - installs with required dependencies;
+  - update all, enable and disable, remove;
+  - existing jars identified by hash.
+- **Modpacks:** Modrinth modpacks installed from Browse or from a `.mrpack` file, and any instance exported as a `.mrpack`.
+- **One click for performance** on Fabric: Sodium, Lithium, FerriteCore, ModernFix, ImmediatelyFast and Entity Culling, skipping any without a build for the version.
+- **Prism Launcher import:** its instances come over with their version, loader, memory, JVM arguments, mods and worlds.
+- **Worlds:** listed with size and last play, zip backups.
+- **Logs and crashes:** a live log with search. After a crash the window reopens on the log, with the crash report and the mod most likely behind it.
+- **Out of the way while you play:** the window and its browser processes exit when the game starts. A 4.5 MB supervisor waits for the game, records the play time, restores the power profile, and brings the window back only after a crash.
+- **A command line** for everything above (`mclaunch help`).
 
 ## How to install
 
-Requires Go 1.27 and Node.js 26 with npm (to build the interface).
+Requires Go 1.27, Node.js 26 with npm, gcc, yyjson, and the X11 libraries with EGL/GLES. Linux with X11 only. The window is media-player's appshell (vendored in `internal/appshell`, without the video player), so the build needs the same `~/src/third_party` (or `$THIRD_PARTY`): `cef/` (CEF 154.0.34 minimal) and `runtime/` (NSS, NSPR, xkbcommon).
 
 ```sh
 git clone https://github.com/r3clusionn/mclaunch
 cd mclaunch
-(cd web && npm ci && npm run build)
-GOAMD64=v4 go build -trimpath -ldflags="-s -w" -o mclaunch .
+./build.sh --install
 ```
+
+This builds the interface, the helper, the supervisor and the program into `build/dist`, then copies them to `~/.local/opt/mclaunch` (377 MB, CEF stripped of its debug info) and links `~/.local/bin/mclaunch`.
+
+**Power profile while playing (optional, root):** `doas sh powerprofile-game.sh` (in the owner's `~/claude/apps`) adds a `game` mode to `/usr/local/sbin/powerprofile` (performance on AC, battery mode on battery) and a doas rule for it. mclaunch switches to `game` at launch and back to `auto` after; without the rule it skips this silently.
 
 ## How to use
 
-To be written with the program.
+```sh
+mclaunch                 # the window
+```
+
+1. **Accounts:** add an offline account (a name), or sign in with Microsoft once the app ID is set (Settings).
+2. **New instance:** pick the version and loader. The recommended loader version is preselected, and Fabric offers the performance mods.
+3. **Play:** the first launch downloads Java, the libraries and the assets (about 700 MB for 26.3, 45 s here), then the window closes and the game starts.
+4. **Mods:** Browse > Mods for the selected instance, or the instance's Mods tab. **Modpacks:** Browse > Modpacks makes a new instance.
+5. **Import:** Settings > Prism Launcher, or a `.mrpack` file.
+
+![An instance page: a Minecraft screenshot as the banner behind "Test Fabric" with Fabric 0.19.5, Minecraft 26.3 and "4 GB · ZGC" badges and a Play button; the Mods tab lists Entity Culling, Fabric API, FerriteCore, ImmediatelyFast, Lithium, Mod Menu, Text Placeholder API and Sodium with their icons, versions, file names, on/off switches and delete buttons, under Add mods, Update all and Performance mods buttons](docs/images/instance.png)
+
+The command line does the same without the window:
+
+```sh
+mclaunch account offline Steve
+mclaunch create "Survival" -game 26.3 -loader fabric -perf
+mclaunch launch survival                  # waits for the game; -detach to return
+mclaunch mods search iris -instance survival
+mclaunch mods install survival iris
+mclaunch import-prism                     # from ~/.local/share/PrismLauncher/instances
+mclaunch import-mrpack pack.mrpack
+```
 
 ## How it works
 
-- **The interface** runs in the shared standalone window from media-player (Chromium's engine embedded as a library, no browser window). When the game starts the window and its processes exit; a small supervisor waits for the game to finish, restores the power profile and offers the crash log.
-- **Launching** builds the class path and arguments from the version's JSON (rules for the operating system and features), extracts the LWJGL natives, and starts the game on its own session.
-- **Java:** a fixed heap (`-Xms` equal to `-Xmx`, 4 GB for vanilla or light mods, 6 to 8 GB for large packs); G1 with a short pause target and generational ZGC are both measured, and the smoother one is the default.
+- **Versions:** Mojang's version manifest gives each version's JSON. A loader's JSON inherits from it, and mclaunch merges them: a loader's library replaces the vanilla one with the same group and artifact. Library and argument rules are evaluated for Linux on x86-64.
+- **Loaders:**
+  - Fabric and Quilt profiles come from their meta servers.
+  - NeoForge and Forge run their official installers headless (`--installClient`) with Mojang's Java, into the shared folder, which they treat as `.minecraft`.
+  - NeoForge versions follow the game's (1.21.1 → 21.1.x, 26.1.2 → 26.1.2.x).
+- **Launching:**
+  - The game jar is linked under the launched version's name, as the official launcher does: Forge and NeoForge ignore `<version>.jar` by name.
+  - Natives of older versions are extracted per launch. LWJGL's own natives unpack into the instance, not `/tmp`, which is RAM here.
+  - The game starts in its own session, with its output in `logs/launch.log`.
+- **Java flags:** a fixed heap (`-Xms` = `-Xmx`: 4 GB, 6 GB for NeoForge, Forge and big packs), `AlwaysPreTouch` and transparent huge pages. The collector is generational ZGC by default; G1 is an option (see Measurements).
 - **Mesa:** `mesa_glthread=true` and a 4 GB shader cache.
-- **Frame cap by power source:** 120 fps on AC (the panel's rate, with VRR) and 60 on battery, written to the instance's `options.txt` before each launch.
-- **Performance mods in one click** for new Fabric and Quilt instances: Sodium, Lithium, FerriteCore, ModernFix, ImmediatelyFast and EntityCulling.
-- **Power profile:** a `game` mode (performance on AC) while the game runs, through a doas rule, and back to automatic afterwards.
+- **Frame cap by power source:** `maxFps` in the instance's `options.txt` before each launch, 120 plugged in (the panel's rate) and 60 on battery.
+- **The window** is CEF rendering the React interface off-screen into an X11/EGL window (appshell). The Go program serves the interface and a JSON API on a random localhost port, with progress as server-sent events.
+- **When the game starts** the window closes, and the process replaces itself (`exec`) with `mclaunch-supervise`, a static Go binary without CEF. The game stays its child, so it waits with `wait4`.
+- **Accounts:** offline accounts use the game's own offline UUID (MD5 of `OfflinePlayer:<name>`). Microsoft accounts use the device-code flow: Microsoft, then Xbox Live, then XSTS, then Minecraft services. Tokens refresh before launching and are stored in `accounts.json` with mode 0600.
 
 ## Measurements
 
-None yet. Planned: frame times with each garbage collector, and watts on AC and battery with each frame cap.
+On the target laptop.
+
+| | |
+|---|---|
+| First download for Minecraft 26.3 (Java, libraries, assets, client: ~700 MB) | 45 s |
+| NeoForge 21.1.259 install (official installer, headless) | 54 s |
+| Forge 47.4.10 install | 26 s |
+| Create+ (NeoForge, 155 files) from its `.mrpack` | 6.4 s; the game starts in 27 s with 244 mods |
+| Window: mapped after launch / memory, 5 processes | 73 ms / 371 MB PSS |
+| While the game runs | window processes 0; supervisor 4.5 MB PSS, 5 threads, 4.8 MB binary |
+
+**Garbage collectors:** Fabric 26.3 with Sodium, launched straight into the same generated world with quick play and the JVM's GC log, 90 s each:
+
+| | Pauses | Longest | Total |
+|---|---|---|---|
+| G1 (`MaxGCPauseMillis=37`) | 32 | 23 ms | 234 ms |
+| Generational ZGC | 30 | 2.35 ms | 2.8 ms |
+
+At 120 fps a frame lasts 8.3 ms, so G1's longer pauses show as stutters and ZGC's never do. Most pauses fell in loading, because nobody moved in the world. ZGC is the default.
 
 ## Verification
 
-None yet. Planned: Microsoft sign-in, vanilla latest, Fabric with Sodium and a NeoForge pack launching, a Prism instance imported and launched, the interface's processes gone while the game runs.
+- **Launched to the title screen or into a world** on the target laptop, with an offline account:
+  - vanilla 26.3;
+  - Fabric 0.19.5 on 26.3 with the performance set (56 mods loaded);
+  - NeoForge 21.1.259 on 1.21.1;
+  - the Create+ modpack (NeoForge 21.1.233, 244 mods);
+  - Forge 47.4.10 on 1.20.1;
+  - Quilt 0.24.0 on 1.21.1;
+  - an imported Prism instance, straight into its world, with its memory and JVM arguments.
+- **In the window,** driven through the DevTools protocol:
+  - a Quilt instance created with the dialog;
+  - Mod Menu installed from Browse with its dependency;
+  - offline account and Microsoft sign-in errors (no app ID; an unknown app ID reaches Microsoft and its error is shown).
+- **Play from the window:**
+  - the window and all its CEF processes exited;
+  - the supervisor waited (4.5 MB) and recorded 94 s of play;
+  - after a forced failure (a bad JVM flag) the window reopened on the log showing Java's error.
+- **Not verified:** Microsoft sign-in end to end (no approved app ID); power draw while playing (the laptop was plugged in, and then the battery reports the charge rate).
 
 ## Limits
 
-- Microsoft sign-in needs this launcher's own Azure app ID approved by Mojang; until then only offline singleplayer works.
-- CurseForge needs an API key and comes later, as do skins and Technic or ATLauncher imports.
+- **Microsoft accounts need Mojang's approval of this launcher's own Azure app.** Minecraft services refuse app IDs they haven't approved. Some launchers reuse the official launcher's ID instead; mclaunch doesn't, so until approval only offline accounts work (singleplayer and LAN).
+- **Quilt:** Quilt Loader 0.24 can't load Minecraft 26.x (it can't read Java 25 classes). It also presents an older Fabric Loader than current Fabric mods require, so many Fabric mods refuse to load on it. The performance set is offered for Fabric only.
+- The window takes 371 MB (CEF), more than the plan's 250 MB target; it is closed while you play.
+- CurseForge, skins, servers and Technic or ATLauncher imports aren't there.
 - Linux with X11 only; built for one machine (`GOAMD64=v4` needs AVX-512).
 
 ## License
 
-GPL-3.0 (see `LICENSE`); the interface reuses components from Seanime.
+GPL-3.0 (see `LICENSE`).
