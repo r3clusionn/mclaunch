@@ -295,19 +295,8 @@ func ensureAudio() {
 	exec.Command("pkill", "-USR1", "-x", "dwmstat").Run()
 }
 
-// PowerProfile asks the owner's powerprofile script for the gaming plan
-// ("game") and back ("restore") through its doas rule (scripts repo,
-// cmds/root/install.sh). Both leave a plan picked by hand alone; without the
-// script or the rule nothing happens.
-func PowerProfile(mode string) error {
-	if !exists("/usr/local/sbin/powerprofile") {
-		return nil
-	}
-	return exec.Command("doas", "-n", "/usr/local/sbin/powerprofile", mode).Run()
-}
-
-// Start applies the frame cap for the power source, starts the game with its
-// output in launch.log, and switches to the game power mode.
+// Start applies the frame cap for the power source and starts the game with
+// its output in launch.log.
 func Start(inst *instance.Instance, v *mojang.Version, java string, o *Options) (*exec.Cmd, error) {
 	fps := inst.FPSOnBattery
 	if instance.OnAC() {
@@ -333,7 +322,6 @@ func Start(inst *instance.Instance, v *mojang.Version, java string, o *Options) 
 		return nil, err
 	}
 	logf.Close() // the game has its own copy
-	PowerProfile("game")
 	inst.LastPlayed = time.Now()
 	inst.Save()
 	return cmd, nil
@@ -346,10 +334,9 @@ type Result struct {
 	Crash    string // newest crash report written during the session, if any
 }
 
-// Finish records the play time, restores the power profile and finds a
-// crash report. Called after the game exits (also from the supervisor).
+// Finish records the play time and finds a crash report. Called after the
+// game exits (also from the supervisor).
 func Finish(inst *instance.Instance, started time.Time, exitCode int) Result {
-	PowerProfile("restore")
 	res := Result{ExitCode: exitCode, Seconds: int64(time.Since(started).Seconds())}
 	if cur, err := instance.Load(inst.ID); err == nil {
 		inst = cur

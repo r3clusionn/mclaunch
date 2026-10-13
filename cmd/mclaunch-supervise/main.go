@@ -1,6 +1,6 @@
 // mclaunch-supervise: waits for a game started by mclaunch's window (which
-// exits when the game starts), records the session, restores the power
-// profile, and reopens the window on the log if the game crashed. A separate
+// exits when the game starts), records the session, and reopens the window
+// on the log if the game crashed. A separate
 // static binary without CEF, so waiting costs a few megabytes.
 //
 // usage: mclaunch-supervise PID INSTANCE STARTED_UNIX

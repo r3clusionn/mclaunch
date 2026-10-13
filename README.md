@@ -1,6 +1,6 @@
 # mclaunch
 
-A Minecraft launcher for Linux in Go: instances, Fabric, Quilt, NeoForge and Forge, Modrinth mods and modpacks, imports of Prism Launcher instances, offline and Microsoft accounts. It downloads Mojang's own Java runtimes, so nothing has to be installed system-wide. It is made for one laptop (Ryzen AI 9 HX 475, Radeon 890M, 2880x1800 at 120 Hz, Gentoo with dwm). Its interface uses Seanime's design, in the same standalone window as [media-player](https://github.com/r3clusionn/media-player), and closes completely when the game starts. It sets Java, Mesa, the frame cap and the power profile for the hardware and the power source.
+A Minecraft launcher for Linux in Go: instances, Fabric, Quilt, NeoForge and Forge, Modrinth mods and modpacks, imports of Prism Launcher instances, offline and Microsoft accounts. It downloads Mojang's own Java runtimes, so nothing has to be installed system-wide. It is made for one laptop (Ryzen AI 9 HX 475, Radeon 890M, 2880x1800 at 120 Hz, Gentoo with dwm). Its interface uses Seanime's design, in the same standalone window as [media-player](https://github.com/r3clusionn/media-player), and closes completely when the game starts. It sets Java, Mesa and the frame cap for the hardware and the power source.
 
 **Status:** working, version 1.0. Vanilla, Fabric, Quilt, NeoForge and Forge instances, a 244-mod NeoForge modpack and an imported Prism instance were all launched on the target laptop (see Verification). Microsoft sign-in uses the official Minecraft launcher's client ID (see Limits). The code is issued and the sign-in page works; finishing a sign-in hasn't been tested yet.
 
@@ -21,7 +21,7 @@ A Minecraft launcher for Linux in Go: instances, Fabric, Quilt, NeoForge and For
 - **Prism Launcher import:** its instances come over with their version, loader, memory, JVM arguments, mods and worlds.
 - **Worlds:** listed with size and last play, zip backups.
 - **Logs and crashes:** a live log with search. After a crash the window reopens on the log, with the crash report and the mod most likely behind it.
-- **Out of the way while you play:** the window and its browser processes exit when the game starts. A 4.5 MB supervisor waits for the game, records the play time, restores the power profile, and brings the window back only after a crash.
+- **Out of the way while you play:** the window and its browser processes exit when the game starts. A 4.5 MB supervisor waits for the game, records the play time and brings the window back only after a crash.
 - **A command line** for everything above (`mclaunch help`).
 
 ## How to install
@@ -35,8 +35,6 @@ cd mclaunch
 ```
 
 This builds the interface, the helper, the supervisor and the program into `build/dist`, then copies them to `~/.local/opt/mclaunch` (377 MB, CEF stripped of its debug info) and links `~/.local/bin/mclaunch`.
-
-**Power plan while playing (optional, root):** with the `powerprofile` script from [scripts](https://github.com/r3clusionn/scripts) installed, mclaunch asks for the gaming plan at launch and restores the previous one after. A plan picked by hand stays as it is. Without the script it skips this silently.
 
 ## How to use
 
