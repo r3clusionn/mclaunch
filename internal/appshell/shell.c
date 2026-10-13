@@ -475,6 +475,10 @@ static void CEF_CALLBACK on_before_command_line_processing(cef_app_t *self, cons
 	append_switch(cl, "enable-gpu-rasterization", NULL);
 	append_switch(cl, "enable-zero-copy", NULL);
 	append_switch(cl, "ignore-gpu-blocklist", NULL);
+	/* ANGLE over EGL rather than GLX: at X depth 30 the GLX path can't bind
+	 * the page's 8-bit buffers (there are no depth-24 visuals) and the page
+	 * never paints. EGL imports them as dmabufs at any depth. */
+	append_switch(cl, "use-angle", "gl-egl");
 	append_switch(cl, "disable-features",
 		      "Translate,MediaRouter,OptimizationHints,AutofillServerCommunication,"
 		      "InterestFeedContentSuggestions,BackForwardCache,SpareRendererForSitePerProcess");
