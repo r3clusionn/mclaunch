@@ -10,7 +10,7 @@ package appshell
 
 /*
 #cgo CFLAGS: -std=gnu11 -O2 -march=native -I${SRCDIR}/../../third_party/cef -I/usr/include/libdrm -Wall -Wno-unused-parameter -Wno-format-truncation
-#cgo LDFLAGS: -L${SRCDIR}/../../third_party/runtime -lcef -lX11 -lXss -lXi -lXext -lEGL -lGLESv2 -lyyjson -lm
+#cgo LDFLAGS: -L${SRCDIR}/../../third_party/runtime -lcef -lX11 -lXss -lXi -lXext -lEGL -lGLESv2 -lm
 #include <stdlib.h>
 #include "appshell.h"
 */

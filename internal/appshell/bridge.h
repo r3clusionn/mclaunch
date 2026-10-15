@@ -3,7 +3,7 @@
 #define APPSHELL_BRIDGE_H
 
 #include <stdint.h>
-#include <yyjson.h>
+#include "yyjson.h"
 
 typedef struct reply_t {
 	yyjson_mut_doc *doc;  /* owns value */
